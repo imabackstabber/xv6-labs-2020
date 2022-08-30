@@ -5,6 +5,8 @@
 #include "riscv.h"
 #include "defs.h"
 #include "fs.h"
+#include "spinlock.h"
+#include "proc.h"
 
 /*
  * the kernel's page table.
@@ -359,8 +361,24 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
     pa0 = walkaddr(pagetable, va0);
-    if(pa0 == 0)
-      return -1;
+    // if(pa0 == 0)
+    //   return -1;
+    if(pa0 == 0){
+      struct proc* p = myproc();
+      if(p->trapframe->sp <= va0 && va0 < p->sz){
+          char* pa = kalloc();
+          if(pa == 0)
+            return -1;
+          memset(pa, 0, PGSIZE);
+          if(mappages(p->pagetable, PGROUNDDOWN(va0), PGSIZE, (uint64)pa, PTE_R | PTE_W | PTE_X | PTE_U) != 0) {
+            kfree(pa);
+            return -1;
+          }
+          pa0 = (uint64)pa;
+      } else {
+        return -1;
+      }
+    }
     n = PGSIZE - (dstva - va0);
     if(n > len)
       n = len;
@@ -384,8 +402,24 @@ copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
   while(len > 0){
     va0 = PGROUNDDOWN(srcva);
     pa0 = walkaddr(pagetable, va0);
-    if(pa0 == 0)
-      return -1;
+    // if(pa0 == 0)
+    //   return -1;
+    if(pa0 == 0){
+      struct proc* p = myproc();
+      if(p->trapframe->sp <= va0 && va0 < p->sz){
+          char* pa = kalloc();
+          if(pa == 0)
+            return -1;
+          memset(pa, 0, PGSIZE);
+          if(mappages(p->pagetable, PGROUNDDOWN(va0), PGSIZE, (uint64)pa, PTE_R | PTE_W | PTE_X | PTE_U) != 0) {
+            kfree(pa);
+            return -1;
+          }
+          pa0 = (uint64)pa;
+      } else {
+        return -1;
+      }
+    }
     n = PGSIZE - (srcva - va0);
     if(n > len)
       n = len;
@@ -411,8 +445,24 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   while(got_null == 0 && max > 0){
     va0 = PGROUNDDOWN(srcva);
     pa0 = walkaddr(pagetable, va0);
-    if(pa0 == 0)
-      return -1;
+    // if(pa0 == 0)
+    //   return -1;
+    if(pa0 == 0){
+      struct proc* p = myproc();
+      if(p->trapframe->sp <= va0 && va0 < p->sz){
+          char* pa = kalloc();
+          if(pa == 0)
+            return -1;
+          memset(pa, 0, PGSIZE);
+          if(mappages(p->pagetable, PGROUNDDOWN(va0), PGSIZE, (uint64)pa, PTE_R | PTE_W | PTE_X | PTE_U) != 0) {
+            kfree(pa);
+            return -1;
+          }
+          pa0 = (uint64)pa;
+      } else {
+        return -1;
+      }
+    }
     n = PGSIZE - (srcva - va0);
     if(n > max)
       n = max;
@@ -440,6 +490,7 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
 
 
 /**
